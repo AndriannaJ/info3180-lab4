@@ -18,6 +18,20 @@ from werkzeug.utils import secure_filename
 def home():
     """Render website's home page."""
     return render_template('home.html')
+    
+    
+@app.route('/login', methods=['POST', 'GET'])
+def login():
+    error = None
+    if request.method == 'POST':
+        if request.form['username'] != app.config['USERNAME'] or request.form['password'] != app.config['PASSWORD']:
+            error = 'Invalid username or password'
+        else:
+            session['logged_in'] = True
+            
+            flash('You were logged in')
+            return redirect(url_for('add_file'))
+    return render_template('login.html', error=error)
 
 
 @app.route('/about/')
@@ -35,25 +49,14 @@ def add_file():
     if request.method == 'POST':
         file = request.files['file']
         filename = secure_filename(file.filename)
-        file.save(os.path.join(file_folder, filename))
+        file.save(os.path.join("app/static/uploads", filename))
 
         flash('File Saved')
         return redirect(url_for('home'))
 
     return render_template('add_file.html')
 
-@app.route('/login', methods=['POST', 'GET'])
-def login():
-    error = None
-    if request.method == 'POST':
-        if request.form['username'] != app.config['USERNAME'] or request.form['password'] != app.config['PASSWORD']:
-            error = 'Invalid username or password'
-        else:
-            session['logged_in'] = True
-            
-            flash('You were logged in')
-            return redirect(url_for('add_file'))
-    return render_template('login.html', error=error)
+
 
 @app.route('/logout')
 def logout():
@@ -71,6 +74,26 @@ def send_text_file(file_name):
     """Send your static text file."""
     file_dot_text = file_name + '.txt'
     return app.send_static_file(file_dot_text)
+    
+@app.route('/filelisting')
+def filelisting():
+    import os
+    rootdir = os.getcwd()
+    print rootdir
+    for subdir, dirs, files in os.walk(rootdir + app.config['UPLOAD_FOLDER']):
+        for file in files:
+            print os.path.join(subdir, file)
+        return render_template("filelisting.html", file_list=getfiles())
+        
+def getfiles():
+    file_list = []
+    for subdir, dirs, files in os.walk("app/static/uploads"):
+        for file in files:
+            if file[-4:] == '.jpg':
+                file_list.append("""<li> <img src="/static/uploads/{}" alt="picture" </li>""".format(file))
+            else:
+                file_list.append("<li> {} </li>".format(file))
+        return file_list
 
 
 @app.after_request
